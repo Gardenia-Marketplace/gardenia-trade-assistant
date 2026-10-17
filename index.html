@@ -1,0 +1,832 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#173f32">
+  <title>Gardenia Trade Desk — Smart sourcing</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --forest: #173f32;
+      --forest-2: #245a45;
+      --leaf: #e6f2e9;
+      --lime: #d8ec9b;
+      --cream: #f8f8f2;
+      --paper: #fff;
+      --ink: #1d2923;
+      --muted: #68736c;
+      --line: #e6e9e3;
+      --amber: #a95c14;
+      --shadow: 0 10px 32px rgb(25 52 36 / 8%);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--cream);
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body { margin: 0; min-width: 320px; }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    .shell { min-height: 100vh; }
+    .topbar {
+      height: 72px; background: var(--paper); border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: space-between; padding: 0 5vw;
+      position: sticky; top: 0; z-index: 5;
+    }
+    .brand { display: flex; gap: 11px; align-items: center; color: var(--forest); font-weight: 800; letter-spacing: -.04em; font-size: 21px; }
+    .brand-mark { width: 34px; height: 34px; border-radius: 11px 11px 11px 4px; background: var(--forest); color: var(--lime); display: grid; place-items: center; font-size: 20px; }
+    .brand small { color: var(--muted); display: block; font-size: 10px; letter-spacing: .13em; text-transform: uppercase; margin-top: 1px; }
+    .top-actions { display: flex; align-items: center; gap: 20px; color: var(--muted); font-size: 13px; }
+    .workspace-switch { display: flex; gap: 5px; padding: 4px; background: #f3f6f1; border-radius: 9px; }
+    .workspace-switch a { text-decoration: none; border-radius: 6px; padding: 7px 10px; color: #58655b; font-size: 11px; font-weight: 700; }
+    .workspace-switch a[aria-current="page"] { background: #fff; color: var(--forest); box-shadow: 0 1px 3px rgb(20 40 25 / 10%); }
+    .avatar { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; background: var(--leaf); color: var(--forest); font-weight: 750; }
+    .layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); max-width: 1480px; margin: auto; min-height: calc(100vh - 72px); }
+    aside { border-right: 1px solid var(--line); padding: 30px 18px; background: #fbfcf8; }
+    .nav-label { margin: 8px 12px 12px; text-transform: uppercase; font-size: 10px; letter-spacing: .13em; font-weight: 750; color: #929b94; }
+    .nav-item { border: 0; background: transparent; width: 100%; display: flex; gap: 12px; align-items: center; color: #57635b; padding: 12px; border-radius: 10px; text-align: left; margin: 3px 0; font-size: 13px; }
+    .nav-item.active { background: var(--leaf); color: var(--forest); font-weight: 700; }
+    .nav-icon { width: 19px; text-align: center; font-size: 16px; }
+    .side-note { margin: 42px 8px 0; background: #f0f4e9; border: 1px solid #e6ecda; border-radius: 14px; padding: 16px; }
+    .side-note strong { display: block; font-size: 12px; color: var(--forest); margin-bottom: 7px; }
+    .side-note p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
+    main { padding: 34px clamp(20px, 4vw, 58px) 70px; min-width: 0; }
+    .crumb { font-size: 12px; color: var(--muted); margin-bottom: 22px; }
+    .hero { display: flex; justify-content: space-between; gap: 26px; align-items: flex-end; margin-bottom: 26px; }
+    h1 { font-size: clamp(27px, 3vw, 38px); letter-spacing: -.045em; line-height: 1.1; margin: 0 0 9px; color: #172b21; }
+    .hero p { color: var(--muted); margin: 0; line-height: 1.5; font-size: 14px; }
+    .demo-pill { flex: none; padding: 8px 11px; border-radius: 30px; background: #fff5e8; border: 1px solid #f1dfc5; color: #865017; font-size: 11px; font-weight: 700; }
+    .searchbar { display: flex; gap: 10px; background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 9px; box-shadow: var(--shadow); margin-bottom: 19px; }
+    .search-wrap { flex: 1; display: flex; align-items: center; gap: 9px; min-width: 120px; padding: 0 8px; }
+    .search-wrap span { font-size: 18px; color: #758078; }
+    .search-wrap input { border: 0; outline: 0; min-width: 0; width: 100%; color: var(--ink); background: transparent; font-size: 13px; }
+    .searchbar select { border: 1px solid var(--line); background: #fff; color: #465249; border-radius: 9px; padding: 0 32px 0 11px; min-height: 40px; font-size: 12px; }
+    .btn { border: 0; border-radius: 9px; padding: 11px 15px; color: #fff; background: var(--forest); font-weight: 700; font-size: 12px; transition: background .15s, transform .15s; }
+    .btn:hover { background: var(--forest-2); transform: translateY(-1px); }
+    .btn.secondary { color: var(--forest); background: #eef4ed; }
+    .btn.secondary:hover { background: #e0ebdf; }
+    .btn.small { padding: 9px 12px; }
+    .quick-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 26px; align-items: center; }
+    .quick-label { color: #7c867f; font-size: 11px; margin-right: 2px; }
+    .chip { border: 1px solid var(--line); background: #fff; color: #566159; border-radius: 30px; padding: 7px 12px; font-size: 11px; }
+    .chip:hover, .chip.selected { border-color: #9cb69d; background: var(--leaf); color: var(--forest); }
+    .section-head { display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-bottom: 14px; }
+    h2 { margin: 0; font-size: 19px; letter-spacing: -.025em; }
+    .result-count { color: var(--muted); font-size: 11px; margin-left: 9px; font-weight: 450; }
+    .sort { border: 0; background: transparent; color: var(--muted); font-size: 11px; padding: 8px; }
+    .product-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    .product { background: var(--paper); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; min-width: 0; transition: box-shadow .2s, transform .2s; }
+    .product:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
+    .product-image { height: 146px; position: relative; display: grid; place-items: center; font-size: 69px; overflow: hidden; }
+    .product-image:before { content: ""; position: absolute; width: 140px; height: 140px; border: 1px solid rgb(255 255 255 / 40%); border-radius: 50%; }
+    .product-image span { filter: drop-shadow(0 7px 6px rgb(57 49 31 / 15%)); position: relative; }
+    .product-image.maize { background: linear-gradient(145deg, #f0db9d, #d8b75e); }
+    .product-image.cocoa { background: linear-gradient(145deg, #dcc5a4, #b58c67); }
+    .product-image.tomato { background: linear-gradient(145deg, #f3b0a0, #d9664d); }
+    .product-image.cassava { background: linear-gradient(145deg, #e5d5b9, #c7b291); }
+    .product-image.shea { background: linear-gradient(145deg, #d4dcaa, #a7b477); }
+    .product-image.beans { background: linear-gradient(145deg, #dfb799, #bd8265); }
+    .match { position: absolute; left: 11px; top: 11px; border-radius: 20px; padding: 6px 8px; background: rgb(255 255 255 / 91%); color: var(--forest); font-size: 10px; font-weight: 750; }
+    .save { position: absolute; right: 11px; top: 9px; width: 29px; height: 29px; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgb(255 255 255 / 88%); color: #647168; font-size: 16px; }
+    .product-info { padding: 13px; }
+    .product-title-row { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+    .product h3 { margin: 0; font-size: 14px; }
+    .grade { white-space: nowrap; color: #718078; font-size: 10px; background: #f4f6f1; padding: 4px 7px; border-radius: 20px; }
+    .seller { color: var(--muted); font-size: 11px; margin-top: 5px; }
+    .product-meta { display: flex; justify-content: space-between; gap: 7px; font-size: 10px; color: #728077; border-top: 1px solid #edf0eb; margin-top: 12px; padding-top: 10px; }
+    .price-row { display: flex; justify-content: space-between; align-items: flex-end; gap: 8px; margin-top: 13px; }
+    .price { color: var(--forest); font-weight: 800; font-size: 16px; letter-spacing: -.03em; }
+    .price small { font-size: 10px; color: #78837a; font-weight: 500; letter-spacing: 0; }
+    .price-row .btn { padding: 9px 11px; font-size: 11px; }
+    .empty { padding: 35px; text-align: center; background: #fff; border: 1px dashed #d4ddd2; border-radius: 14px; color: var(--muted); grid-column: 1 / -1; }
+    .empty strong { display: block; color: var(--forest); margin-bottom: 6px; }
+    .assistant {
+      position: fixed; right: 25px; bottom: 25px; z-index: 8; background: var(--forest); color: #fff;
+      border: 0; border-radius: 30px; padding: 13px 17px; box-shadow: 0 8px 26px rgb(23 63 50 / 28%);
+      display: flex; gap: 9px; align-items: center; font-weight: 700; font-size: 12px;
+    }
+    .assistant span:first-child { color: var(--lime); font-size: 17px; }
+    .drawer-backdrop { position: fixed; inset: 0; background: rgb(20 32 25 / 30%); z-index: 9; opacity: 0; pointer-events: none; transition: opacity .2s; }
+    .drawer-backdrop.open { opacity: 1; pointer-events: auto; }
+    .drawer { position: fixed; z-index: 10; right: 0; top: 0; bottom: 0; width: min(430px, 100vw); background: #fff; transform: translateX(102%); transition: transform .25s; box-shadow: -12px 0 45px rgb(0 0 0 / 12%); display: flex; flex-direction: column; }
+    .drawer.open { transform: translateX(0); }
+    .drawer-head { padding: 22px 23px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
+    .drawer-head h2 { font-size: 18px; }
+    .close { border: 0; background: #f2f4f0; border-radius: 50%; height: 32px; width: 32px; font-size: 18px; color: #5c685f; }
+    .drawer-body { padding: 14px 22px; flex: 1; overflow: auto; }
+    .drawer-foot { border-top: 1px solid var(--line); padding: 17px 22px 21px; }
+    .basket-item { padding: 14px 0; border-bottom: 1px solid #edf0eb; display: flex; gap: 12px; align-items: flex-start; }
+    .basket-emoji { width: 43px; height: 43px; flex: none; display: grid; place-items: center; border-radius: 11px; background: #f3f1df; font-size: 22px; }
+    .basket-main { flex: 1; min-width: 0; }
+    .basket-main strong { display: block; font-size: 12px; margin: 1px 0 4px; }
+    .basket-main small { color: var(--muted); font-size: 10px; line-height: 1.45; display: block; }
+    .qty { margin-top: 9px; display: inline-flex; border: 1px solid var(--line); border-radius: 7px; align-items: center; overflow: hidden; }
+    .qty button { border: 0; background: #f6f7f4; color: var(--forest); width: 27px; height: 26px; font-weight: 700; }
+    .qty span { width: auto; min-width: 58px; text-align: center; font-size: 10px; color: #526056; padding: 0 5px; }
+    .remove { border: 0; background: transparent; color: #9a6254; font-size: 10px; padding: 3px; }
+    .totals { display: flex; justify-content: space-between; color: #5f6a62; font-size: 12px; margin: 8px 0; }
+    .totals.grand { color: var(--forest); font-weight: 800; font-size: 15px; padding-top: 10px; border-top: 1px solid var(--line); margin-top: 12px; }
+    .notice { background: #f4f7ed; color: #60704e; border-radius: 8px; padding: 10px; font-size: 10px; line-height: 1.45; margin: 13px 0; }
+    .drawer-foot .btn { width: 100%; padding: 13px; }
+    .chat-panel { position: fixed; right: 25px; bottom: 82px; z-index: 7; width: min(365px, calc(100vw - 32px)); height: 465px; background: #fff; border: 1px solid var(--line); box-shadow: 0 14px 50px rgb(18 44 29 / 18%); border-radius: 16px; display: flex; flex-direction: column; transform: translateY(15px) scale(.97); opacity: 0; pointer-events: none; transition: .2s; overflow: hidden; }
+    .chat-panel.open { transform: none; opacity: 1; pointer-events: auto; }
+    .chat-head { padding: 15px; background: var(--forest); color: white; display: flex; justify-content: space-between; align-items: center; }
+    .chat-head strong { font-size: 13px; }
+    .chat-head small { color: #d3e4d1; display: block; margin-top: 4px; font-size: 10px; }
+    .chat-head .close { background: rgb(255 255 255 / 14%); color: white; }
+    .chat-messages { flex: 1; padding: 15px; overflow: auto; background: #fafbf8; }
+    .message { max-width: 90%; width: fit-content; background: #fff; border: 1px solid var(--line); padding: 10px 11px; border-radius: 3px 12px 12px; font-size: 11px; line-height: 1.55; margin-bottom: 9px; }
+    .message.user { margin-left: auto; background: var(--leaf); border-color: #dce8dc; border-radius: 12px 3px 12px 12px; }
+    .suggestions { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 12px 10px; background: #fafbf8; }
+    .suggestions button { border: 1px solid #dce5db; background: white; border-radius: 20px; color: var(--forest); padding: 6px 8px; font-size: 9px; }
+    .chat-form { border-top: 1px solid var(--line); display: flex; gap: 7px; padding: 10px; }
+    .chat-form input { flex: 1; border: 1px solid var(--line); border-radius: 8px; padding: 10px; outline-color: #91ad8f; font-size: 11px; min-width: 0; }
+    .chat-form button { width: 38px; border: 0; border-radius: 8px; color: white; background: var(--forest); }
+    .toast { position: fixed; left: 50%; bottom: 27px; transform: translate(-50%, 20px); opacity: 0; pointer-events: none; transition: .2s; z-index: 15; border-radius: 10px; background: #203c2f; color: white; padding: 12px 16px; font-size: 12px; box-shadow: var(--shadow); max-width: calc(100vw - 30px); }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    .footnote { color: #929a93; font-size: 10px; margin-top: 17px; line-height: 1.5; }
+    .role-switch { border: 1px solid var(--line); border-radius: 9px; background: #f7f9f5; padding: 8px 10px; color: var(--forest); font-weight: 700; font-size: 11px; }
+    .tool-section { margin: 0 0 26px; }
+    .tool-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 13px; }
+    .tool-card { min-height: 160px; display: flex; flex-direction: column; background: #fff; border: 1px solid var(--line); border-radius: 13px; padding: 15px; }
+    .tool-card .tool-icon { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--leaf); font-size: 17px; margin-bottom: 12px; }
+    .tool-card h3 { font-size: 13px; margin: 0 0 6px; }
+    .tool-card p { color: var(--muted); line-height: 1.45; font-size: 10px; margin: 0 0 13px; flex: 1; }
+    .tool-card button { align-self: flex-start; }
+    .demo-note { padding: 9px 11px; background: #fff5e8; border: 1px solid #f1dfc5; border-radius: 9px; color: #80501d; font-size: 10px; line-height: 1.45; margin: 12px 0; }
+    dialog { color: var(--ink); border: 1px solid var(--line); border-radius: 15px; padding: 0; width: min(500px, calc(100vw - 28px)); max-height: 88vh; box-shadow: 0 22px 80px rgb(0 0 0 / 22%); }
+    dialog::backdrop { background: rgb(20 32 25 / 42%); }
+    .tool-dialog-head { padding: 18px 20px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 15px; align-items: flex-start; }
+    .tool-dialog-head h2 { font-size: 17px; margin-bottom: 5px; }
+    .tool-dialog-head p { color: var(--muted); font-size: 11px; line-height: 1.45; margin: 0; }
+    .tool-dialog-body { padding: 18px 20px; max-height: 60vh; overflow: auto; }
+    .tool-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .tool-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+    .tool-field.full { grid-column: 1 / -1; }
+    .tool-field label { font-size: 10px; color: #59655d; font-weight: 700; }
+    .tool-field input, .tool-field select, .tool-field textarea { width: 100%; border: 1px solid #dfe5de; border-radius: 8px; padding: 10px; color: var(--ink); background: #fff; font-size: 11px; }
+    .tool-field textarea { min-height: 82px; resize: vertical; }
+    .tool-result { display: none; margin-top: 15px; padding: 13px; border-radius: 10px; background: #f3f7ee; color: #354a38; font-size: 11px; line-height: 1.55; white-space: pre-line; }
+    .tool-result.visible { display: block; }
+    .tool-result strong { display: block; margin-bottom: 6px; color: var(--forest); }
+    .tool-dialog-foot { padding: 14px 20px 18px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+    .tool-dialog-foot small { color: var(--muted); font-size: 9px; max-width: 60%; line-height: 1.4; }
+    .tool-result-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+    .empty-state { padding: 25px; text-align: center; background: #fff; border: 1px dashed #d4ddd2; border-radius: 12px; color: var(--muted); font-size: 12px; }
+    @media (max-width: 980px) {
+      .layout { grid-template-columns: 68px minmax(0, 1fr); }
+      aside { padding: 25px 9px; }
+      .nav-item { justify-content: center; padding: 12px 6px; }
+      .nav-item .nav-text, .nav-label, .side-note { display: none; }
+      .nav-icon { font-size: 18px; }
+      .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .tool-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 620px) {
+      .topbar { height: 60px; padding: 0 17px; }
+      .top-actions .top-help { display: none; }
+      .layout { grid-template-columns: 1fr; min-height: calc(100vh - 60px); }
+      aside { border: 0; border-bottom: 1px solid var(--line); padding: 7px 12px; position: sticky; top: 60px; z-index: 4; overflow-x: auto; }
+      aside nav { display: flex; gap: 4px; width: max-content; }
+      .nav-item { width: auto; padding: 9px 12px; gap: 7px; }
+      .nav-item .nav-text { display: inline; font-size: 11px; }
+      .nav-icon { font-size: 14px; }
+      main { padding: 23px 16px 80px; }
+      .crumb { margin-bottom: 17px; }
+      .hero { align-items: flex-start; flex-direction: column; gap: 12px; }
+      .searchbar { flex-wrap: wrap; }
+      .search-wrap { flex-basis: 100%; min-height: 36px; }
+      .searchbar select { flex: 1; }
+      .searchbar > .btn { flex: 1; }
+      .product-grid { gap: 9px; }
+      .product-image { height: 110px; font-size: 54px; }
+      .product-info { padding: 10px; }
+      .product h3 { font-size: 12px; }
+      .seller { font-size: 10px; }
+      .grade { font-size: 9px; }
+      .product-meta { font-size: 9px; }
+      .price { font-size: 14px; }
+      .price-row { align-items: center; }
+      .price-row .btn { font-size: 10px; padding: 8px; }
+      .assistant { bottom: 15px; right: 14px; padding: 11px 14px; }
+      .chat-panel { right: 10px; bottom: 70px; }
+      .section-head { align-items: flex-start; }
+      .tool-grid { grid-template-columns: 1fr; }
+      .tool-card { min-height: 135px; }
+      .tool-fields { grid-template-columns: 1fr; }
+      .tool-field.full { grid-column: auto; }
+      .top-actions { gap: 8px; }
+      .workspace-switch a { font-size: 10px; padding: 7px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand"><div class="brand-mark">✳</div><div>Gardenia<small>TRADE DESK</small></div></div>
+      <div class="top-actions"><span class="top-help">Demo workspace</span><nav class="workspace-switch" aria-label="Switch workspace"><a href="buyer.html" id="buyerWorkspaceLink">Buyer</a><a href="farmer.html" id="farmerWorkspaceLink">Farmer</a></nav><div class="avatar" aria-label="Demo account">A</div></div>
+    </header>
+    <div class="layout">
+      <aside>
+        <div class="nav-label">Workspace</div>
+        <nav aria-label="Main navigation">
+          <button class="nav-item active" type="button"><span class="nav-icon">⌕</span><span class="nav-text">Source products</span></button>
+          <button class="nav-item" type="button" id="openBasketNav"><span class="nav-icon">▣</span><span class="nav-text">Sourcing list <span id="navCount"></span></span></button>
+          <button class="nav-item" type="button" data-toast="Your saved suppliers will appear here."><span class="nav-icon">♡</span><span class="nav-text">Saved suppliers</span></button>
+          <button class="nav-item" type="button" data-toast="Your RFQs and orders will appear here."><span class="nav-icon">▤</span><span class="nav-text">RFQs & orders</span></button>
+        </nav>
+        <div class="side-note"><strong>One brief. Better sourcing.</strong><p>Compare sample offers, group demand, and prepare a request for quote from one workspace.</p></div>
+      </aside>
+      <main>
+        <div class="crumb" id="crumb">Buyer workspace <span> / </span> Smart sourcing</div>
+        <section class="hero" id="hero">
+          <div><h1>Source smarter,<br>trade with confidence.</h1><p>Tell us what your business needs. Compare offers and build one consolidated sourcing request.</p></div>
+          <div class="demo-pill">● INTERACTIVE DEMO · SAMPLE OFFERS</div>
+        </section>
+        <section class="tool-section" id="toolSection">
+          <div class="section-head"><div><h2 id="toolHeading">Buyer tools</h2><span class="result-count">Personalized assistance · sample data</span></div></div>
+          <div class="tool-grid" id="toolGrid"></div>
+          <p class="demo-note" id="toolNotice">Recommendations, reorder history, demand estimates, and quality guidance are illustrative. No Gardenia account history or live verification service is connected.</p>
+        </section>
+        <section id="buyerCatalog">
+        <form class="searchbar" id="searchForm">
+          <label class="search-wrap"><span aria-hidden="true">⌕</span><input id="searchInput" type="search" placeholder="Try “grade 1 maize, 10 tonnes, delivered to Lagos”" aria-label="Describe what you need"></label>
+          <select id="categoryFilter" aria-label="Filter by category">
+            <option value="all">All categories</option><option value="Grains">Grains</option><option value="Cash crops">Cash crops</option><option value="Produce">Produce</option><option value="Roots & tubers">Roots & tubers</option>
+          </select>
+          <button class="btn" type="submit">Find offers <span aria-hidden="true">→</span></button>
+        </form>
+        <div class="quick-row">
+          <span class="quick-label">Popular:</span>
+          <button class="chip" data-query="maize">Maize</button><button class="chip" data-query="cocoa">Cocoa</button>
+          <button class="chip" data-query="shea">Shea nuts</button><button class="chip" data-query="tomato">Tomatoes</button>
+        </div>
+        <section>
+          <div class="section-head"><h2>Recommended offers <span class="result-count" id="resultCount"></span></h2><select class="sort" id="sortSelect" aria-label="Sort offers"><option value="match">Best match</option><option value="price">Lowest price</option><option value="lead">Fastest delivery</option></select></div>
+          <div class="product-grid" id="productGrid" aria-live="polite"></div>
+          <p class="footnote">Illustrative demo content only. Prices, suppliers, grades, quantities, delivery estimates, and match scores are not live Gardenia Marketplace listings. Confirm availability and commercial terms with the supplier before trading.</p>
+        </section>
+        </section>
+        <section id="farmerOverview" hidden>
+          <div class="section-head"><div><h2>Farm business toolkit</h2><span class="result-count">Draft, plan, and review with guided tools</span></div></div>
+          <div class="demo-note">Demo mode: tools use only values you enter and illustrative rules. They do not inspect your Gardenia account, diagnose produce, predict actual yields, set live market prices, or provide credit decisions.</div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <button class="assistant" id="assistantButton" type="button" aria-expanded="false"><span>✦</span><span>Ask Trade Assistant</span></button>
+  <section class="chat-panel" id="chatPanel" aria-label="Trade assistant" aria-hidden="true">
+    <div class="chat-head"><div><strong>Gardenia Trade Assistant</strong><small>Smart sourcing · Demo mode</small></div><button class="close" id="closeChat" aria-label="Close assistant">×</button></div>
+    <div class="chat-messages" id="chatMessages" aria-live="polite">
+      <div class="message">Hi! Tell me the crop, quantity, grade, destination, or delivery window you have in mind. I can help shape a sourcing brief from the sample offers.</div>
+    </div>
+    <div class="suggestions"><button data-prompt="I need 10 tonnes of maize">10 tonnes of maize</button><button data-prompt="Compare the cocoa offers">Compare cocoa</button><button data-prompt="How does aggregation work?">How aggregation works</button></div>
+    <form class="chat-form" id="chatForm"><input id="chatInput" placeholder="Describe your sourcing need…" aria-label="Message the Trade Assistant"><button aria-label="Send message">↑</button></form>
+  </section>
+  <div class="drawer-backdrop" id="backdrop"></div>
+  <aside class="drawer" id="basketDrawer" aria-label="Sourcing list" aria-hidden="true" hidden>
+    <div class="drawer-head"><h2>Sourcing list <span class="result-count" id="basketCount"></span></h2><button class="close" id="closeBasket" aria-label="Close sourcing list">×</button></div>
+    <div class="drawer-body" id="basketBody"></div>
+    <div class="drawer-foot" id="basketFoot"></div>
+  </aside>
+  <div class="toast" id="toast" role="status"></div>
+  <dialog id="toolDialog" aria-labelledby="toolDialogTitle">
+    <form id="toolForm">
+      <div class="tool-dialog-head"><div><h2 id="toolDialogTitle"></h2><p id="toolDialogDescription"></p></div><button class="close" type="button" id="closeTool" aria-label="Close tool">×</button></div>
+      <div class="tool-dialog-body"><div class="tool-fields" id="toolFields"></div><div class="tool-result" id="toolResult" aria-live="polite"></div></div>
+      <div class="tool-dialog-foot"><small id="toolDisclaimer"></small><button class="btn" type="submit" id="toolSubmit">Generate demo guidance →</button></div>
+    </form>
+  </dialog>
+  <dialog id="rfqDialog" aria-labelledby="rfqTitle">
+    <div class="tool-dialog-head"><div><h2 id="rfqTitle">Demo RFQ summary</h2><p>Review and copy this draft into your authorized RFQ workflow.</p></div><button class="close" type="button" id="closeRfq" aria-label="Close RFQ summary">×</button></div>
+    <div class="tool-dialog-body"><textarea id="rfqSummary" readonly aria-label="RFQ summary" style="width:100%;min-height:210px;border:1px solid var(--line);border-radius:8px;padding:11px;font-family:inherit;font-size:12px;line-height:1.5"></textarea><p class="footnote">This draft is not sent to Gardenia or any supplier.</p></div>
+    <div class="tool-dialog-foot"><small>Select the draft text to copy it.</small><button class="btn secondary" type="button" id="selectRfq">Select summary</button></div>
+  </dialog>
+  <script>
+    const offers = [
+      { id: "maize-kano", name: "Yellow maize", emoji: "🌽", style: "maize", category: "Grains", variety: "Grade 1 · dried", seller: "Arewa Growers Cooperative", location: "Kano, Nigeria", price: 485, unit: "50 kg bag", min: 20, lead: 5, score: 98, tag: "Best overall" },
+      { id: "cocoa-ashanti", name: "Cocoa beans", emoji: "🫘", style: "cocoa", category: "Cash crops", variety: "Grade 1 · fermented", seller: "Ashanti Crop Collective", location: "Ashanti, Ghana", price: 2120, unit: "60 kg bag", min: 10, lead: 9, score: 94, tag: "Verified sample" },
+      { id: "tomato-kaduna", name: "Fresh tomatoes", emoji: "🍅", style: "tomato", category: "Produce", variety: "Roma · farm fresh", seller: "Green Belt Produce", location: "Kaduna, Nigeria", price: 18500, unit: "100 kg crate", min: 5, lead: 3, score: 92, tag: "Fast delivery" },
+      { id: "cassava-oyo", name: "Cassava roots", emoji: "🥔", style: "cassava", category: "Roots & tubers", variety: "Fresh · food grade", seller: "Oyo Valley Farmers", location: "Oyo, Nigeria", price: 245, unit: "50 kg sack", min: 30, lead: 4, score: 89, tag: "Strong value" },
+      { id: "shea-tamale", name: "Shea nuts", emoji: "🥜", style: "shea", category: "Cash crops", variety: "Raw · sun-dried", seller: "Northern Women Producers", location: "Tamale, Ghana", price: 760, unit: "25 kg bag", min: 15, lead: 8, score: 91, tag: "Co-op sourced" },
+      { id: "beans-plateau", name: "Brown beans", emoji: "🫘", style: "beans", category: "Grains", variety: "Oloyin · cleaned", seller: "Plateau Harvest Network", location: "Plateau, Nigeria", price: 950, unit: "25 kg bag", min: 20, lead: 6, score: 86, tag: "Quality pick" }
+    ];
+    const storageKey = "gardenia-trade-desk-demo-v1";
+    const loadBasket = () => {
+      try {
+        const saved = JSON.parse(localStorage.getItem(storageKey) || "{}");
+        return saved && typeof saved === "object" && !Array.isArray(saved) ? saved : {};
+      } catch (error) {
+        console.warn("Unable to read the saved demo sourcing list.", error);
+        return {};
+      }
+    };
+    let basket = loadBasket();
+    let activeQuery = "";
+    let activeCategory = "all";
+    let sortMode = "match";
+    let toastTimer;
+    const currency = new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 });
+    const productGrid = document.getElementById("productGrid");
+    const basketDrawer = document.getElementById("basketDrawer");
+    const backdrop = document.getElementById("backdrop");
+    const toast = document.getElementById("toast");
+    const buyerTools = [
+      { id: "recommendations", icon: "✦", title: "Sourcing agent", description: "Discover relevant products from similar buying interests and your demo purchase pattern.", fields: [], disclaimer: "Demo interest signals only; no account or other buyers' data is used." },
+      { id: "reorder", icon: "↻", title: "Smart reorder", description: "Review an illustrative reorder reminder based on a sample buying cadence.", fields: [], disclaimer: "Sample order history and cadence; confirm need, current stock, and price." },
+      { id: "demand", icon: "▥", title: "Demand forecaster", description: "Create a simple what-if range from your entered weekly volume and trend.", fields: [
+        { id: "product", label: "Product", type: "select", options: ["Yellow maize", "Cocoa beans", "Fresh tomatoes", "Cassava roots", "Shea nuts", "Brown beans"] },
+        { id: "volume", label: "Typical weekly demand (units)", type: "number", min: 1, value: 100, required: true },
+        { id: "trend", label: "Expected trend", type: "select", options: ["Stable", "Rising", "Falling"] }
+      ], disclaimer: "Illustrative scenario, not a predictive model or supply guarantee." },
+      { id: "quality", icon: "◉", title: "Quality & freshness guide", description: "Walk through lot, handling, and freshness checks before you accept an offer.", fields: [
+        { id: "product", label: "Product / lot", type: "text", placeholder: "e.g. tomatoes, lot 24A" },
+        { id: "harvestAge", label: "Time since harvest (hours, if known)", type: "number", min: 0, placeholder: "Unknown is okay" },
+        { id: "handling", label: "Cold chain / storage evidence", type: "select", options: ["Not checked", "Seller says maintained", "Evidence available", "Concern or interruption"] }
+      ], disclaimer: "Guidance only: no image, lab, certificate, or physical inspection is performed." }
+    ];
+    const farmerTools = [
+      { id: "listing", icon: "✎", title: "Listing copilot", description: "Turn your crop, grade, stock, and price details into a listing draft for review.", fields: [
+        { id: "crop", label: "Crop or product", type: "text", required: true, placeholder: "e.g. yellow maize" },
+        { id: "quantity", label: "Available quantity and unit", type: "text", required: true, placeholder: "e.g. 2 tonnes" },
+        { id: "grade", label: "Grade / quality details", type: "text", placeholder: "e.g. dried, cleaned" },
+        { id: "location", label: "Collection location", type: "text", placeholder: "Town, region" },
+        { id: "price", label: "Asking price (optional)", type: "number", min: 0, placeholder: "Enter your own price" }
+      ], disclaimer: "Draft only. Check accuracy, Gardenia listing rules, and pricing before publishing." },
+      { id: "planner", icon: "◷", title: "Harvest & planting planner", description: "Map a rough crop calendar from your planned planting date and maturity estimate.", fields: [
+        { id: "crop", label: "Crop", type: "text", required: true, placeholder: "Enter crop" },
+        { id: "plantDate", label: "Planned planting date", type: "date", required: true },
+        { id: "maturity", label: "Your expected days to maturity", type: "number", min: 1, value: 90, required: true }
+      ], disclaimer: "Calendar estimates only; local weather, variety, soil, and extension guidance take precedence." },
+      { id: "pricing", icon: "↗", title: "Dynamic pricing advisor", description: "Compare your target price to a reference you provide and see the difference.", fields: [
+        { id: "crop", label: "Crop and unit", type: "text", required: true, placeholder: "e.g. maize per 50 kg bag" },
+        { id: "target", label: "Your target price (NGN)", type: "number", min: 0.01, required: true },
+        { id: "reference", label: "Your market reference (NGN)", type: "number", min: 0.01, required: true }
+      ], disclaimer: "Uses only your inputs; not a live market quote or guaranteed optimal price." },
+      { id: "postharvest", icon: "❖", title: "Post-harvest & spoilage assistant", description: "Use a handling checklist to help spot risks and prioritize your next checks.", fields: [
+        { id: "crop", label: "Crop / produce", type: "text", required: true, placeholder: "What did you harvest?" },
+        { id: "harvested", label: "Harvest date", type: "date" },
+        { id: "storage", label: "Current handling or storage", type: "select", options: ["Not recorded", "Dry and ventilated", "Refrigerated / cooled", "Warm, wet, or damaged", "Other / unsure"] }
+      ], disclaimer: "No spoilage diagnosis is made. Follow crop-specific local extension and food-safety advice." },
+      { id: "finance", icon: "₦", title: "Farm finance assistant", description: "Summarize the simple cash figures you enter and identify a planning gap.", fields: [
+        { id: "cash", label: "Cash available (NGN)", type: "number", min: 0, value: 0 },
+        { id: "revenue", label: "Expected sales revenue (NGN)", type: "number", min: 0, value: 0 },
+        { id: "costs", label: "Estimated operating costs (NGN)", type: "number", min: 0, value: 0 },
+        { id: "need", label: "Next-cycle funds needed (NGN)", type: "number", min: 0, value: 0 }
+      ], disclaimer: "Basic arithmetic only; not lending eligibility, credit, tax, or investment advice." }
+    ];
+    const toolCatalog = [...buyerTools, ...farmerTools];
+    let currentTool = null;
+    const workspaceParam = new URLSearchParams(window.location.search).get("workspace");
+    const fixedWorkspace = workspaceParam === "buyer" || workspaceParam === "farmer" ? workspaceParam : null;
+    let currentRole = fixedWorkspace || "buyer";
+
+    function renderWorkspace() {
+      const isFarmer = currentRole === "farmer";
+      const hero = document.getElementById("hero");
+      document.getElementById("crumb").innerHTML = isFarmer ? "Farmer workspace <span> / </span> Farm business tools" : "Buyer workspace <span> / </span> Smart sourcing";
+      hero.querySelector("h1").innerHTML = isFarmer ? "Grow with a clearer<br>plan of action." : "Source smarter,<br>trade with confidence.";
+      hero.querySelector("p").textContent = isFarmer
+        ? "Draft listings, plan crop activities, and review your farm decisions with practical guided tools."
+        : "Tell us what your business needs. Compare offers and build one consolidated sourcing request.";
+      document.querySelector(".top-actions .top-help").textContent = isFarmer ? "Farmer workspace" : "Buyer workspace";
+      const buyerLink = document.getElementById("buyerWorkspaceLink");
+      const farmerLink = document.getElementById("farmerWorkspaceLink");
+      buyerLink.setAttribute("aria-current", isFarmer ? "false" : "page");
+      farmerLink.setAttribute("aria-current", isFarmer ? "page" : "false");
+      buyerLink.hidden = Boolean(fixedWorkspace && !isFarmer);
+      farmerLink.hidden = Boolean(fixedWorkspace && isFarmer);
+      document.getElementById("buyerCatalog").hidden = isFarmer;
+      document.getElementById("farmerOverview").hidden = !isFarmer;
+      document.getElementById("openBasketNav").hidden = isFarmer;
+      basketDrawer.hidden = isFarmer;
+      if (isFarmer) setBasketOpen(false);
+      const tools = isFarmer ? farmerTools : buyerTools;
+      document.getElementById("toolHeading").textContent = isFarmer ? "Farmer assistant tools" : "Buyer tools";
+      document.getElementById("toolNotice").textContent = isFarmer
+        ? "Planning, price comparisons, finance arithmetic, and quality guidance are illustrative. They use only demo values you enter and are not connected to Gardenia records or outside data."
+        : "Recommendations, reorder history, demand estimates, and quality guidance are illustrative. No Gardenia account history or live verification service is connected.";
+      document.querySelector("#assistantButton span:last-child").textContent = isFarmer ? "Ask Farm Assistant" : "Ask Trade Assistant";
+      document.querySelector(".chat-head strong").textContent = isFarmer ? "Gardenia Farm Assistant" : "Gardenia Trade Assistant";
+      document.querySelector(".chat-head small").textContent = isFarmer ? "Farm tools · Demo mode" : "Smart sourcing · Demo mode";
+      const chatMessages = document.getElementById("chatMessages");
+      chatMessages.replaceChildren();
+      const greeting = document.createElement("div");
+      greeting.className = "message";
+      greeting.textContent = isFarmer
+        ? "Hello! Ask about drafting a listing, crop planning, price comparisons, post-harvest checks, or basic farm cash-flow planning. Use the farmer tools for input-based guidance."
+        : "Hi! Tell me the crop, quantity, grade, destination, or delivery window you have in mind. I can help shape a sourcing brief from the sample offers.";
+      chatMessages.appendChild(greeting);
+      document.querySelector(".suggestions").innerHTML = isFarmer
+        ? `<button data-prompt="Help with my farm listing">Listing help</button><button data-prompt="Help plan planting and harvest">Crop planning</button><button data-prompt="Post-harvest handling advice">Post-harvest checks</button>`
+        : `<button data-prompt="I need 10 tonnes of maize">10 tonnes of maize</button><button data-prompt="Compare the cocoa offers">Compare cocoa</button><button data-prompt="How does aggregation work?">How aggregation works</button>`;
+      document.querySelectorAll(".suggestions button").forEach((button) => button.addEventListener("click", () => askAssistant(button.dataset.prompt)));
+      document.getElementById("toolGrid").innerHTML = tools.map((tool) => `
+        <article class="tool-card">
+          <div class="tool-icon" aria-hidden="true">${tool.icon}</div><h3>${tool.title}</h3>
+          <p>${tool.description}</p><button class="btn secondary small" type="button" data-open-tool="${tool.id}">Open tool →</button>
+        </article>`).join("");
+      const navButtons = [...document.querySelectorAll("aside nav .nav-item")];
+      const navSettings = isFarmer
+        ? [["Farm tools", "✦"], ["Listings", "▤"], ["Crop planner", "◷"], ["Farm finance", "₦"]]
+        : [["Source products", "⌕"], ["Sourcing list", "▣"], ["Saved suppliers", "♡"], ["RFQs & orders", "▤"]];
+      navButtons.forEach((button, index) => {
+        const text = button.querySelector(".nav-text");
+        const icon = button.querySelector(".nav-icon");
+        if (text) {
+          text.replaceChildren(document.createTextNode(navSettings[index][0]));
+          if (index === 1 && !isFarmer) {
+            const count = document.createElement("span");
+            count.id = "navCount";
+            text.append(" ", count);
+          }
+        }
+        if (icon) icon.textContent = navSettings[index][1];
+        button.hidden = isFarmer && index === 1;
+      });
+    }
+
+    function openTool(id) {
+      currentTool = toolCatalog.find((tool) => tool.id === id);
+      if (!currentTool) return;
+      document.getElementById("toolDialogTitle").textContent = currentTool.title;
+      document.getElementById("toolDialogDescription").textContent = currentTool.description;
+      document.getElementById("toolDisclaimer").textContent = currentTool.disclaimer;
+      document.getElementById("toolSubmit").textContent = currentTool.fields.length ? "Generate demo guidance →" : "Show demo suggestions →";
+      const fields = document.getElementById("toolFields");
+      fields.replaceChildren();
+      currentTool.fields.forEach((field) => {
+        const wrapper = document.createElement("div");
+        wrapper.className = `tool-field${field.type === "textarea" ? " full" : ""}`;
+        const label = document.createElement("label");
+        label.htmlFor = `tool-${field.id}`;
+        label.textContent = field.label;
+        const control = field.type === "select" ? document.createElement("select") : document.createElement(field.type === "textarea" ? "textarea" : "input");
+        control.id = `tool-${field.id}`;
+        control.name = field.id;
+        if (field.required) control.required = true;
+        if (field.type === "number") {
+          control.min = String(field.min ?? 0);
+          control.step = "any";
+        }
+        if (field.placeholder) control.placeholder = field.placeholder;
+        if (field.value !== undefined) control.value = String(field.value);
+        if (field.options) field.options.forEach((value) => {
+          const option = document.createElement("option");
+          option.value = value;
+          option.textContent = value;
+          control.appendChild(option);
+        });
+        wrapper.append(label, control);
+        fields.appendChild(wrapper);
+      });
+      const result = document.getElementById("toolResult");
+      result.classList.remove("visible");
+      result.replaceChildren();
+      document.getElementById("toolDialog").showModal();
+    }
+
+    function makeToolResult(text, actions = []) {
+      const result = document.getElementById("toolResult");
+      result.replaceChildren();
+      const heading = document.createElement("strong");
+      heading.textContent = "Demo guidance";
+      const body = document.createElement("span");
+      body.textContent = text;
+      result.append(heading, body);
+      if (actions.length) {
+        const actionRow = document.createElement("div");
+        actionRow.className = "tool-result-actions";
+        actions.forEach((action) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "btn secondary small";
+          button.dataset.toolAction = action.kind;
+          if (action.id) button.dataset.id = action.id;
+          if (action.quantity) button.dataset.quantity = String(action.quantity);
+          button.textContent = action.label;
+          actionRow.appendChild(button);
+        });
+        result.appendChild(actionRow);
+      }
+      result.classList.add("visible");
+    }
+
+    function generateToolGuidance(tool, values) {
+      if (tool.id === "recommendations") {
+        const picks = [offers[0], offers[1], offers[4]];
+        const actions = picks.map((offer) => ({ kind: "add-offer", id: offer.id, quantity: offer.min, label: `Add ${offer.name}` }));
+        makeToolResult("Using an illustrative demo pattern of repeat interest in grains and cash crops, these offers are suggested for exploration. A live agent should use only your authorized purchase history and explain each similarity.", actions);
+      } else if (tool.id === "reorder") {
+        const actions = [
+          { kind: "reorder", id: "maize-kano", quantity: 40, label: "Add 40 maize bags" },
+          { kind: "reorder", id: "cocoa-ashanti", quantity: 10, label: "Add 10 cocoa bags" }
+        ];
+        makeToolResult("Demo reorder reminders based on a fictional order history: 40 bags of maize bought about a month ago and 10 bags of cocoa bought about six weeks ago. Check current inventory, price, and your actual need before reordering.", actions);
+      } else if (tool.id === "demand") {
+        const baseline = Number(values.volume);
+        const multiplier = values.trend === "Rising" ? 1.15 : values.trend === "Falling" ? 0.85 : 1;
+        const midpoint = Math.round(baseline * multiplier * 4);
+        const lower = Math.round(midpoint * 0.85);
+        const upper = Math.round(midpoint * 1.15);
+        makeToolResult(`For ${values.product}, a simple four-week scenario from your ${baseline} units/week baseline and ${values.trend.toLowerCase()} trend is about ${lower}–${upper} units (midpoint ${midpoint}). This is a basic what-if calculation, not a forecast trained on sales, seasonality, or market data.`);
+      } else if (tool.id === "quality") {
+        const age = values.harvestAge ? `${values.harvestAge} hours` : "not recorded";
+        const text = `Lot: ${values.product || "not specified"} · time since harvest: ${age} · storage evidence: ${values.handling}.\n\nBefore accepting: confirm harvest/packing date and lot identity; inspect representative samples for damage, odor, pests, moisture, and product-specific grade; review storage and transport records; agree written rejection criteria; request a qualified inspection or lab test where appropriate.\n\nNo quality or freshness verification was performed by this demo.`;
+        makeToolResult(text);
+      } else if (tool.id === "listing") {
+        const title = `${values.grade ? `${values.grade} ` : ""}${values.crop} — ${values.quantity}`;
+        const description = `Available: ${values.quantity}. ${values.grade ? `Quality details: ${values.grade}. ` : ""}${values.location ? `Collection location: ${values.location}. ` : ""}${values.price ? `Seller-entered asking price: ${currency.format(Number(values.price))}. ` : ""}Contact seller to confirm current stock, grade, packaging, collection, and final terms.`;
+        makeToolResult(`Suggested title: ${title}\n\nDraft description: ${description}\n\nReview every claim and update the details before publishing.`);
+      } else if (tool.id === "planner") {
+        const planted = new Date(`${values.plantDate}T12:00:00Z`);
+        planted.setUTCDate(planted.getUTCDate() + Number(values.maturity));
+        const harvestDate = planted.toLocaleDateString(undefined, { timeZone: "UTC", year: "numeric", month: "short", day: "numeric" });
+        makeToolResult(`Planning estimate for ${values.crop}: if planted on ${values.plantDate} and your ${values.maturity}-day maturity estimate holds, the indicative harvest date is ${harvestDate}.\n\nPlanning prompts: confirm variety and local planting window; record planting and emergence; schedule regular field checks; confirm maturity with crop-specific signs and local extension advice; line up labor, storage, and buyers ahead of harvest.`);
+      } else if (tool.id === "pricing") {
+        const target = Number(values.target);
+        const reference = Number(values.reference);
+        const change = reference ? ((target - reference) / reference) * 100 : 0;
+        const comparison = change === 0 ? "matches" : `${Math.abs(change).toFixed(1)}% ${change > 0 ? "above" : "below"}`;
+        makeToolResult(`Your target for ${values.crop} is ${currency.format(target)}; your entered reference is ${currency.format(reference)}. The target is ${comparison} that reference.\n\nCompare like-for-like quality, unit, location, quantity, transport, and payment terms. This demo has no live market prices and does not recommend a sale price.`);
+      } else if (tool.id === "postharvest") {
+        const concern = values.storage === "Warm, wet, or damaged";
+        makeToolResult(`Crop: ${values.crop} · harvest date: ${values.harvested || "not recorded"} · handling: ${values.storage}.\n\n${concern ? "Prioritize separating visibly damaged or wet produce, checking the whole lot, and seeking crop-specific local extension guidance promptly." : "Record harvest time and storage conditions, keep lots identified, inspect representative samples regularly, and use suitable crop-specific ventilation, temperature, and packaging guidance."}\n\nThis is a handling checklist, not a spoilage diagnosis or food-safety clearance.`);
+      } else if (tool.id === "finance") {
+        const cash = Number(values.cash);
+        const revenue = Number(values.revenue);
+        const costs = Number(values.costs);
+        const need = Number(values.need);
+        const projected = cash + revenue - costs;
+        const gap = Math.max(0, need - projected);
+        makeToolResult(`Entered figures: available cash ${currency.format(cash)} + expected sales ${currency.format(revenue)} − operating costs ${currency.format(costs)} = indicative balance ${currency.format(projected)}.\nNext-cycle funds entered: ${currency.format(need)}. Indicative planning gap: ${currency.format(gap)}.\n\nCheck timing, unpaid invoices, household withdrawals, and contingency costs. This arithmetic is not a credit assessment or finance offer.`);
+      }
+    }
+
+    function renderProducts() {
+      const briefTerms = activeQuery.split(/[^a-z0-9]+/).filter((term) => term.length > 2 && !["and", "for", "the", "with", "delivered", "delivery", "grade"].includes(term));
+      const knownProductTerms = briefTerms.filter((term) => offers.some((offer) => `${offer.name} ${offer.category}`.toLowerCase().includes(term)));
+      let visible = offers.filter((offer) => {
+        const searchable = `${offer.name} ${offer.category} ${offer.variety} ${offer.seller} ${offer.location}`.toLowerCase();
+        const productDetails = `${offer.name} ${offer.category}`.toLowerCase();
+        const matchQuery = !activeQuery || (knownProductTerms.length
+          ? knownProductTerms.some((term) => productDetails.includes(term))
+          : searchable.includes(activeQuery));
+        return matchQuery && (activeCategory === "all" || offer.category === activeCategory);
+      });
+      if (sortMode === "price") visible = [...visible].sort((a, b) => a.price - b.price);
+      else if (sortMode === "lead") visible = [...visible].sort((a, b) => a.lead - b.lead);
+      else visible = [...visible].sort((a, b) => b.score - a.score);
+      document.getElementById("resultCount").textContent = `${visible.length} sample ${visible.length === 1 ? "offer" : "offers"}`;
+      productGrid.innerHTML = visible.length ? visible.map((offer) => `
+        <article class="product">
+          <div class="product-image ${offer.style}"><span aria-hidden="true">${offer.emoji}</span><span class="match">${offer.score}% match</span><button class="save" aria-label="Save ${offer.name}" data-save="${offer.id}">♡</button></div>
+          <div class="product-info">
+            <div class="product-title-row"><h3>${offer.name}</h3><span class="grade">${offer.category}</span></div>
+            <div class="seller">${offer.seller}</div>
+            <div class="product-meta"><span>⌖ ${offer.location}</span><span>${offer.lead} day${offer.lead === 1 ? "" : "s"}</span></div>
+            <div class="product-meta" style="margin-top:0;padding-top:7px;border:0"><span>${offer.variety}</span><span>Min. ${offer.min} units</span></div>
+            <div class="price-row"><div class="price">${currency.format(offer.price)} <small>/ ${offer.unit}</small></div><button class="btn" data-add="${offer.id}">Add to list</button></div>
+          </div>
+        </article>`).join("") : `<div class="empty"><strong>No matching sample offers</strong>Try another product or clear the category filter.</div>`;
+    }
+
+    function saveBasket() {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(basket));
+      } catch (error) {
+        console.error("Unable to save the demo sourcing list.", error);
+        showToast("Your browser could not save this demo list.");
+      }
+    }
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove("show"), 2600);
+    }
+
+    function setBasketOpen(open) {
+      basketDrawer.classList.toggle("open", open);
+      backdrop.classList.toggle("open", open);
+      basketDrawer.setAttribute("aria-hidden", String(!open));
+    }
+
+    function addToBasket(id) {
+      const offer = offers.find((item) => item.id === id);
+      if (!offer) return;
+      addQuantity(id, offer.min);
+      showToast(`${offer.name} added at its minimum order quantity.`);
+    }
+
+    function addQuantity(id, quantity) {
+      const offer = offers.find((item) => item.id === id);
+      if (!offer || !Number.isFinite(quantity) || quantity < offer.min) return;
+      const roundedQuantity = Math.ceil(quantity / offer.min) * offer.min;
+      basket[id] = (basket[id] || 0) + roundedQuantity;
+      saveBasket();
+      renderBasket();
+      return offer;
+    }
+
+    function renderBasket() {
+      const entries = offers.filter((offer) => Number.isFinite(basket[offer.id]) && basket[offer.id] > 0);
+      const itemCount = entries.length;
+      const unitCount = entries.reduce((sum, offer) => sum + basket[offer.id], 0);
+      document.getElementById("basketCount").textContent = `${itemCount} ${itemCount === 1 ? "product" : "products"}`;
+      const navCount = document.getElementById("navCount");
+      if (navCount) navCount.textContent = itemCount ? `(${itemCount})` : "";
+      const subtotal = entries.reduce((sum, offer) => sum + basket[offer.id] * offer.price, 0);
+      document.getElementById("basketBody").innerHTML = entries.length ? entries.map((offer) => `
+        <div class="basket-item">
+          <div class="basket-emoji">${offer.emoji}</div><div class="basket-main"><strong>${offer.name}</strong><small>${offer.seller}<br>${currency.format(offer.price)} / ${offer.unit}</small>
+            <div class="qty"><button data-qty="-1" data-id="${offer.id}" aria-label="Decrease ${offer.name}">−</button><span>${basket[offer.id]} ${offer.unit}</span><button data-qty="1" data-id="${offer.id}" aria-label="Increase ${offer.name}">+</button></div>
+          </div><button class="remove" data-remove="${offer.id}">Remove</button>
+        </div>`).join("") : `<div class="empty"><strong>Your sourcing list is empty</strong>Add sample offers to compare a consolidated estimate.</div>`;
+      document.getElementById("basketFoot").innerHTML = entries.length ? `
+        <div class="totals"><span>Products</span><span>${itemCount}</span></div>
+        <div class="totals"><span>Combined units</span><span>${unitCount}</span></div>
+        <div class="totals"><span>Suppliers</span><span>${new Set(entries.map((offer) => offer.seller)).size}</span></div>
+        <div class="totals grand"><span>Indicative subtotal</span><span>${currency.format(subtotal)}</span></div>
+        <div class="notice">Sample estimate only. Freight, taxes, availability, payment, and final prices are not included or confirmed.</div>
+        <button class="btn" id="createRfq">Prepare RFQ summary →</button>` : `<div class="notice">Add an offer to begin a sourcing request. The demo does not place orders or contact suppliers.</div>`;
+    }
+
+    function askAssistant(text) {
+      const clean = text.trim();
+      if (!clean) return;
+      appendMessage(clean, "user");
+      const lower = clean.toLowerCase();
+      let reply;
+      if (currentRole === "farmer") {
+        const farmerIntent = lower.includes("listing") ? "listing"
+          : lower.includes("plant") || lower.includes("harvest plan") || lower.includes("crop planning") ? "planner"
+            : lower.includes("price") ? "pricing"
+              : lower.includes("post-harvest") || lower.includes("spoilage") ? "postharvest"
+                : lower.includes("finance") || lower.includes("cash") ? "finance" : null;
+        const tool = farmerTools.find((item) => item.id === farmerIntent);
+        reply = tool
+          ? `${tool.description} Open “${tool.title}” in the farmer tools above to enter details and generate a draft. This demo uses your inputs only; it is not connected to Gardenia farm records or live data.`
+          : "I can guide listing drafts, crop planning, price comparisons, post-harvest checks, and farm finance arithmetic. Choose a farmer tool above for a structured, input-based result.";
+        window.setTimeout(() => appendMessage(reply, "assistant"), 320);
+        return;
+      }
+      const product = offers.find((offer) => lower.includes(offer.name.toLowerCase().split(" ")[0]));
+      if (/aggregat|combine|pool|minimum|moq/.test(lower)) {
+        reply = "Aggregation combines compatible buyer demand into a larger sourcing brief. This demo groups quantities by selected offer; a live service should verify each supplier's MOQ, quality, location, delivery terms, and buyer consent before any commitment.";
+      } else if (/compare|cheapest|lowest|price/.test(lower) && product) {
+        const same = offers.filter((offer) => offer.name.toLowerCase().includes(product.name.toLowerCase().split(" ")[0]));
+        reply = same.length > 1 ? `I found ${same.length} sample matches for ${product.name}. Use “Lowest price” to compare them. These demo offers aren't live or verified.` : `${product.name} has one sample offer at ${currency.format(product.price)} per ${product.unit}. Add it to your sourcing list to include it in an RFQ summary.`;
+      } else if (/\d|tonne|ton/.test(lower) && product) {
+        reply = `I can see a sample ${product.name} offer from ${product.seller}. Its minimum is ${product.min} ${product.unit} units. Search or add the offer to build a list; this demo can't convert tonnes into bag quantities reliably without a confirmed bag weight.`;
+      } else if (/\d|tonne|ton/.test(lower)) {
+        const term = lower.match(/maize|cocoa|tomato|cassava|shea|bean/);
+        if (term) {
+          document.getElementById("searchInput").value = term[0];
+          activeQuery = term[0];
+          renderProducts();
+          reply = `I filtered the sample offers for ${term[0]}. Confirm exact grade, pack size, destination, and delivery date before comparing or requesting a quote.`;
+        } else {
+          reply = "I can help make that a sourcing brief. Which product and grade do you need, what quantity/unit, and where should it be delivered? In this demo I can only filter sample listings; no live supplier search is connected.";
+        }
+      } else if (/destination|deliver|lagos|accra|location/.test(lower)) {
+        reply = "Delivery destination affects landed cost and availability. Add the destination and required date to your RFQ notes; the demo offer prices exclude freight and cannot validate routes.";
+      } else {
+        reply = "I can help find a product in these sample offers, compare price or lead time, and explain the RFQ list. Try “10 tonnes of maize” or “How does aggregation work?”";
+      }
+      window.setTimeout(() => appendMessage(reply, "assistant"), 320);
+    }
+
+    function appendMessage(text, role) {
+      const message = document.createElement("div");
+      message.className = `message ${role === "user" ? "user" : ""}`;
+      message.textContent = text;
+      const messages = document.getElementById("chatMessages");
+      messages.appendChild(message);
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    document.getElementById("searchForm").addEventListener("submit", (event) => {
+      event.preventDefault();
+      activeQuery = document.getElementById("searchInput").value.trim().toLowerCase();
+      activeCategory = document.getElementById("categoryFilter").value;
+      renderProducts();
+    });
+    document.getElementById("categoryFilter").addEventListener("change", (event) => {
+      activeCategory = event.target.value;
+      activeQuery = document.getElementById("searchInput").value.trim().toLowerCase();
+      renderProducts();
+    });
+    document.getElementById("sortSelect").addEventListener("change", (event) => {
+      sortMode = event.target.value;
+      renderProducts();
+    });
+    document.getElementById("toolGrid").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-open-tool]");
+      if (button) openTool(button.dataset.openTool);
+    });
+    document.getElementById("closeTool").addEventListener("click", () => document.getElementById("toolDialog").close());
+    document.getElementById("closeRfq").addEventListener("click", () => document.getElementById("rfqDialog").close());
+    document.getElementById("selectRfq").addEventListener("click", () => document.getElementById("rfqSummary").select());
+    document.getElementById("toolForm").addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (!currentTool) return;
+      const values = Object.fromEntries(new FormData(event.currentTarget).entries());
+      generateToolGuidance(currentTool, values);
+    });
+    document.getElementById("toolResult").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-tool-action]");
+      if (!button) return;
+      const offer = addQuantity(button.dataset.id, Number(button.dataset.quantity));
+      if (offer) showToast(`${offer.name} added to your sourcing list.`);
+    });
+    document.querySelectorAll("aside nav .nav-item").forEach((button, index) => button.addEventListener("click", () => {
+      const isFarmer = currentRole === "farmer";
+      if (isFarmer) {
+        if (index === 0) document.getElementById("toolSection").scrollIntoView({ behavior: "smooth" });
+        else if (index === 2) openTool("planner");
+        else if (index === 3) openTool("finance");
+        else showToast("Use the listing copilot to prepare a listing draft.");
+      } else if (index === 0) document.getElementById("buyerCatalog").scrollIntoView({ behavior: "smooth" });
+      else if (index === 2) showToast("Your saved suppliers will appear here when connected to Gardenia.");
+      else if (index === 3) showToast("Your RFQs and orders will appear here when connected to Gardenia.");
+    }));
+    document.querySelectorAll(".chip").forEach((chip) => chip.addEventListener("click", () => {
+      document.getElementById("searchInput").value = chip.dataset.query;
+      activeQuery = chip.dataset.query;
+      renderProducts();
+    }));
+    productGrid.addEventListener("click", (event) => {
+      const add = event.target.closest("[data-add]");
+      const save = event.target.closest("[data-save]");
+      if (add) addToBasket(add.dataset.add);
+      if (save) {
+        save.textContent = save.textContent === "♡" ? "♥" : "♡";
+        showToast(save.textContent === "♥" ? "Saved in this demo session." : "Removed from saved items.");
+      }
+    });
+    document.getElementById("basketBody").addEventListener("click", (event) => {
+      const quantity = event.target.closest("[data-qty]");
+      const remove = event.target.closest("[data-remove]");
+      if (quantity) {
+        const offer = offers.find((item) => item.id === quantity.dataset.id);
+        basket[offer.id] = Math.max(0, basket[offer.id] + Number(quantity.dataset.qty) * offer.min);
+        if (!basket[offer.id]) delete basket[offer.id];
+        saveBasket();
+        renderBasket();
+      }
+      if (remove) {
+        delete basket[remove.dataset.remove];
+        saveBasket();
+        renderBasket();
+      }
+    });
+    document.getElementById("openBasketNav").addEventListener("click", () => setBasketOpen(true));
+    document.getElementById("closeBasket").addEventListener("click", () => setBasketOpen(false));
+    backdrop.addEventListener("click", () => setBasketOpen(false));
+    document.getElementById("basketFoot").addEventListener("click", (event) => {
+      if (event.target.id !== "createRfq") return;
+      const lines = offers.filter((offer) => basket[offer.id] > 0).map((offer) => `• ${offer.name}: ${basket[offer.id]} ${offer.unit} units — ${offer.seller} (${currency.format(basket[offer.id] * offer.price)} sample estimate)`);
+      const total = offers.reduce((sum, offer) => sum + (basket[offer.id] || 0) * offer.price, 0);
+      const summary = `DEMO RFQ SUMMARY\\n\\n${lines.join("\\n")}\\n\\nIndicative subtotal: ${currency.format(total)}\\n\\nSample only; not sent to Gardenia or any supplier. Confirm all terms before trade.`;
+      document.getElementById("rfqSummary").value = summary;
+      document.getElementById("rfqDialog").showModal();
+    });
+    const assistantButton = document.getElementById("assistantButton");
+    const chatPanel = document.getElementById("chatPanel");
+    assistantButton.addEventListener("click", () => {
+      const open = !chatPanel.classList.contains("open");
+      chatPanel.classList.toggle("open", open);
+      chatPanel.setAttribute("aria-hidden", String(!open));
+      assistantButton.setAttribute("aria-expanded", String(open));
+      if (open) document.getElementById("chatInput").focus();
+    });
+    document.getElementById("closeChat").addEventListener("click", () => {
+      chatPanel.classList.remove("open");
+      chatPanel.setAttribute("aria-hidden", "true");
+      assistantButton.setAttribute("aria-expanded", "false");
+    });
+    document.getElementById("chatForm").addEventListener("submit", (event) => {
+      event.preventDefault();
+      const input = document.getElementById("chatInput");
+      askAssistant(input.value);
+      input.value = "";
+    });
+    document.querySelectorAll("[data-toast]").forEach((button) => button.addEventListener("click", () => showToast(button.dataset.toast)));
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        setBasketOpen(false);
+        chatPanel.classList.remove("open");
+        chatPanel.setAttribute("aria-hidden", "true");
+        assistantButton.setAttribute("aria-expanded", "false");
+      }
+    });
+    renderWorkspace();
+    renderProducts();
+    renderBasket();
+  </script>
+</body>
+</html>

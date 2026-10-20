@@ -4,6 +4,7 @@ import json
 import tempfile
 import threading
 import unittest
+from datetime import datetime, timedelta, timezone
 from contextlib import closing
 from http.server import ThreadingHTTPServer
 from pathlib import Path
@@ -60,6 +61,28 @@ class PreferenceTests(unittest.TestCase):
                 row = connection.execute("SELECT user_key FROM user_preferences").fetchone()
             self.assertNotEqual(row[0], "15551234567")
             self.assertEqual(len(row[0]), 64)
+
+    def test_parsed_conversation_state_expires_and_is_cleared(self):
+        with tempfile.TemporaryDirectory() as directory:
+            database = str(Path(directory) / "preferences.sqlite3")
+            store = assistant.LanguageStore(database, "test-secret")
+            store.set("15551234567", "en", "buyer")
+            state = {
+                "kind": "sourcing",
+                "stage": "address",
+                "address": "Private delivery address",
+                "created_at": (datetime.now(timezone.utc) - timedelta(days=2)).isoformat(),
+            }
+            store.set_conversation("15551234567", state)
+            self.assertEqual(store.get_conversation("15551234567"), {})
+            self.assertEqual(store.get("15551234567"), ("en", "buyer"))
+            import sqlite3
+
+            with closing(sqlite3.connect(database)) as connection:
+                row = connection.execute(
+                    "SELECT conversation_json, conversation_expires_at FROM user_preferences"
+                ).fetchone()
+            self.assertEqual(row, (None, None))
 
 
 class WebhookTests(unittest.TestCase):

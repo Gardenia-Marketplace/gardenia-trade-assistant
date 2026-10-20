@@ -280,9 +280,9 @@
   <section class="chat-panel" id="chatPanel" aria-label="Trade assistant" aria-hidden="true">
     <div class="chat-head"><div><strong>Gardenia Trade Assistant</strong><small>Smart sourcing · Demo mode</small></div><button class="close" id="closeChat" aria-label="Close assistant">×</button></div>
     <div class="chat-messages" id="chatMessages" aria-live="polite">
-      <div class="message">Hi! Tell me the crop, quantity, grade, destination, or delivery window you have in mind. I can help shape a sourcing brief from the sample offers.</div>
+      <div class="message">Hi! I can capture a sourcing brief one question at a time. Live Gardenia listings and orders are not connected. What produce do you need?</div>
     </div>
-    <div class="suggestions"><button data-prompt="I need 10 tonnes of maize">10 tonnes of maize</button><button data-prompt="Compare the cocoa offers">Compare cocoa</button><button data-prompt="How does aggregation work?">How aggregation works</button></div>
+    <div class="suggestions"><button data-prompt="I need 20 kg tomatoes">20 kg tomatoes</button><button data-prompt="I need 50 kg maize">50 kg maize</button><button data-prompt="I need cassava">Start a sourcing brief</button></div>
     <form class="chat-form" id="chatForm"><input id="chatInput" placeholder="Describe your sourcing need…" aria-label="Message the Trade Assistant"><button aria-label="Send message">↑</button></form>
   </section>
   <div class="drawer-backdrop" id="backdrop"></div>
@@ -382,6 +382,8 @@
     const workspaceParam = new URLSearchParams(window.location.search).get("workspace");
     const fixedWorkspace = workspaceParam === "buyer" || workspaceParam === "farmer" ? workspaceParam : null;
     let currentRole = fixedWorkspace || "buyer";
+    let buyerSourcingStage = null;
+    let buyerSourcingBrief = {};
 
     function renderWorkspace() {
       const isFarmer = currentRole === "farmer";
@@ -674,28 +676,37 @@
         window.setTimeout(() => appendMessage(reply, "assistant"), 320);
         return;
       }
-      const product = offers.find((offer) => lower.includes(offer.name.toLowerCase().split(" ")[0]));
-      if (/aggregat|combine|pool|minimum|moq/.test(lower)) {
-        reply = "Aggregation combines compatible buyer demand into a larger sourcing brief. This demo groups quantities by selected offer; a live service should verify each supplier's MOQ, quality, location, delivery terms, and buyer consent before any commitment.";
-      } else if (/compare|cheapest|lowest|price/.test(lower) && product) {
-        const same = offers.filter((offer) => offer.name.toLowerCase().includes(product.name.toLowerCase().split(" ")[0]));
-        reply = same.length > 1 ? `I found ${same.length} sample matches for ${product.name}. Use “Lowest price” to compare them. These demo offers aren't live or verified.` : `${product.name} has one sample offer at ${currency.format(product.price)} per ${product.unit}. Add it to your sourcing list to include it in an RFQ summary.`;
-      } else if (/\d|tonne|ton/.test(lower) && product) {
-        reply = `I can see a sample ${product.name} offer from ${product.seller}. Its minimum is ${product.min} ${product.unit} units. Search or add the offer to build a list; this demo can't convert tonnes into bag quantities reliably without a confirmed bag weight.`;
-      } else if (/\d|tonne|ton/.test(lower)) {
-        const term = lower.match(/maize|cocoa|tomato|cassava|shea|bean/);
-        if (term) {
-          document.getElementById("searchInput").value = term[0];
-          activeQuery = term[0];
-          renderProducts();
-          reply = `I filtered the sample offers for ${term[0]}. Confirm exact grade, pack size, destination, and delivery date before comparing or requesting a quote.`;
+      if (!buyerSourcingStage) {
+        const crop = lower.match(/\b(tomatoes?|maize|corn|cocoa|cassava|shea|beans?|rice|yam|onions?|pepper|okra|plantain)\b/);
+        const quantity = lower.match(/\b(\d+(?:\.\d+)?)\s*(?:kg|kgs|kilograms?)\b/);
+        buyerSourcingBrief = { crop: crop ? crop[0] : clean };
+        if (quantity) buyerSourcingBrief.quantity = `${quantity[1]} kg`;
+        buyerSourcingStage = quantity ? "location" : "quantity";
+        reply = quantity
+          ? "Where in Nigeria should it be delivered?"
+          : "How many kg do you need?";
+      } else if (buyerSourcingStage === "quantity") {
+        const quantity = lower.match(/\b(\d+(?:\.\d+)?)\s*(?:kg|kgs|kilograms?)\b/);
+        if (!quantity || Number(quantity[1]) <= 0) {
+          reply = "Please give the quantity in kg.";
         } else {
-          reply = "I can help make that a sourcing brief. Which product and grade do you need, what quantity/unit, and where should it be delivered? In this demo I can only filter sample listings; no live supplier search is connected.";
+          buyerSourcingBrief.quantity = `${quantity[1]} kg`;
+          buyerSourcingStage = "location";
+          reply = "Where in Nigeria should it be delivered?";
         }
-      } else if (/destination|deliver|lagos|accra|location/.test(lower)) {
-        reply = "Delivery destination affects landed cost and availability. Add the destination and required date to your RFQ notes; the demo offer prices exclude freight and cannot validate routes.";
+      } else if (buyerSourcingStage === "location") {
+        buyerSourcingBrief.location = clean;
+        buyerSourcingStage = "date";
+        reply = "What date do you need it?";
+      } else if (buyerSourcingStage === "date") {
+        buyerSourcingBrief.date = clean;
+        buyerSourcingStage = "cadence";
+        reply = "Is this a one-off order or recurring supply?";
       } else {
-        reply = "I can help find a product in these sample offers, compare price or lead time, and explain the RFQ list. Try “10 tonnes of maize” or “How does aggregation work?”";
+        buyerSourcingBrief.cadence = clean;
+        reply = `Sourcing brief captured: ${buyerSourcingBrief.crop}, ${buyerSourcingBrief.quantity}, ${buyerSourcingBrief.location}, ${buyerSourcingBrief.date}, ${buyerSourcingBrief.cadence}. This demo is not connected to verified Gardenia listing, seller, pricing, or delivery tools, so I can't provide a real shortlist or place an order.`;
+        buyerSourcingStage = null;
+        buyerSourcingBrief = {};
       }
       window.setTimeout(() => appendMessage(reply, "assistant"), 320);
     }

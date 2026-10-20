@@ -14,16 +14,18 @@ import threading
 import urllib.error
 import urllib.request
 from contextlib import closing
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
+from sourcing_agent import BuyerSourcingAgent
 
 LOG = logging.getLogger("gardenia.whatsapp")
-SUPPORTED_LANGUAGES = ("en", "ha", "yo", "ig", "fr")
+SUPPORTED_LANGUAGES = ("en", "pcm", "ha", "yo", "ig", "fr")
 LANGUAGE_NAMES = {
     "en": "English",
+    "pcm": "Nigerian Pidgin",
     "ha": "Hausa",
     "yo": "Yoruba",
     "ig": "Igbo",
@@ -46,7 +48,7 @@ TEXT: dict[str, dict[str, str]] = {
         "postharvest": "Post-harvest assistant: share the crop, harvest date, symptoms or handling concern, and storage conditions. I can suggest general checks, not diagnose spoilage or certify food safety. Follow local extension guidance.",
         "finance": "Farm finance: share cash available, expected sales, operating costs, and the next-cycle amount needed (include currency and timing). I can help with basic planning arithmetic, not credit or lending decisions.",
         "fallback": "I didn't quite understand. Reply HELP for the menu, BUYER or FARMER to choose a role, or send LANGUAGE Hausa/Yoruba/Igbo/French to change language.",
-        "text_only": "Please send a text message. For a photo or document, describe the crop and what you want help checking. This assistant cannot inspect images yet.",
+        "text_only": "Please send a text message. Voice notes are not transcribed here, and photos or documents cannot be inspected yet; describe what you need help with.",
         "stopped": "You are opted out. Gardenia will not send further assistant replies unless you send START.",
     },
     "ha": {
@@ -65,7 +67,7 @@ TEXT: dict[str, dict[str, str]] = {
         "postharvest": "Bayan girbi: aika amfanin gona, ranar girbi, matsalar da kake gani, da yanayin ajiya. Zan ba da dubawa ta gaba ɗaya, ba gano lalacewa ko tabbatar da lafiyar abinci ba. Bi shawarar jami'in noma na yankinka.",
         "finance": "Kuɗin gona: aika kuɗin da kake da shi, kuɗin tallace-tallace da ake sa rai, kashe-kashe, da buƙatar kuɗin kakar gaba tare da kuɗi da lokaci. Zan taimaka da lissafi mai sauƙi, ba shawarar bashi ko rance ba.",
         "fallback": "Ban gane ba. Amsa HELP don zaɓuɓɓuka, BUYER ko FARMER don zaɓar matsayi, ko LANGUAGE English/Yoruba/Igbo/French don canza harshe.",
-        "text_only": "Aika saƙon rubutu don Allah. Idan hoto ko takarda ne, bayyana amfanin gona da abin da kake son dubawa. Ba zan iya duba hoto ba tukuna.",
+        "text_only": "Aika saƙon rubutu don Allah. Ba a fassara saƙon murya ko duba hoto/takarda a nan; rubuta abin da kake buƙatar taimako da shi.",
         "stopped": "An cire ka daga saƙonnin mataimaki. Ba za a sake amsawa ba sai ka aika START.",
     },
     "yo": {
@@ -84,7 +86,7 @@ TEXT: dict[str, dict[str, str]] = {
         "postharvest": "Lẹ́yìn ìkórè: fi ohun ọ̀gbìn, ọjọ́ ìkórè, ohun tí o ṣàkíyèsí, àti bí o ṣe tọ́jú rẹ̀. Màá dábàá àwọn àyẹ̀wò gbogbogbòò, kì í ṣe àyẹ̀wò ìbàjẹ́ tàbí ìfọwọ́sí ààbò oúnjẹ. Tẹ̀lé ìmọ̀ràn agbẹ̀gbìn agbègbè.",
         "finance": "Owó oko: fi owó tó wà, títà tí o retí, ìnáwó iṣẹ́, àti owó àkókò tó ń bọ̀ pẹ̀lú irú owó àti àkókò. Màá ràn ọ́ lọ́wọ́ pẹ̀lú ìṣirò ìpìlẹ̀, kì í ṣe ìpinnu yá owó.",
         "fallback": "Mi ò lóye dáadáa. Dáhùn HELP fún àṣàyàn, BUYER tàbí FARMER láti yan ipa, tàbí LANGUAGE English/Hausa/Igbo/French láti yí èdè padà.",
-        "text_only": "Jọ̀wọ́ fi ọ̀rọ̀ ránṣẹ́. Tí fọ́tò tàbí ìwé bá jẹ́, ṣàlàyé ohun ọ̀gbìn àti ohun tí o fẹ́ ṣàyẹ̀wò. Mi ò tíì lè ṣàyẹ̀wò àwòrán.",
+        "text_only": "Jọ̀wọ́ fi ọ̀rọ̀ ránṣẹ́. A kò tú ọ̀rọ̀ ohùn sí ọ̀rọ̀ níbí, a kò sì lè ṣàyẹ̀wò fọ́tò tàbí ìwé; kọ ohun tí o nílò ìrànlọ́wọ́ sí.",
         "stopped": "O ti jáde kúrò nínú ìdáhùn olùrànlọ́wọ́. Gardenia kò ní tún dáhùn títí o fi ránṣẹ́ START.",
     },
     "ig": {
@@ -103,7 +105,7 @@ TEXT: dict[str, dict[str, str]] = {
         "postharvest": "Mgbe owuwe ihe ubi gasịrị: zipu ihe ubi, ụbọchị owuwe, ihe ị hụrụ, na ọnọdụ nchekwa. Aga m atụ aro nyocha izugbe, ọ bụghị ịchọpụta ire ere ma ọ bụ ikwenye nchekwa nri. Soro ndụmọdụ ọrụ ugbo mpaghara.",
         "finance": "Ego ugbo: zipu ego dị, ego ire ị na-atụ anya, ụgwọ ọrụ, na ego ịchọrọ maka oge ọzọ tinyere ego na oge. Enwere m ike inyere aka na mgbakọ dị mfe, ọ bụghị mkpebi ego mgbazinye.",
         "fallback": "Aghọtaghị m nke ọma. Zaghachi HELP maka nhọrọ, BUYER ma ọ bụ FARMER ịhọrọ ọrụ, ma ọ bụ LANGUAGE English/Hausa/Yoruba/French ịgbanwe asụsụ.",
-        "text_only": "Biko zipu ozi ederede. Ọ bụrụ foto ma ọ bụ akwụkwọ, kọwaa ihe ubi na ihe ịchọrọ nyocha. Enweghị m ike ilele foto ugbu a.",
+        "text_only": "Biko zipu ozi ederede. A naghị edegharị ozi olu ma ọ bụ lelee foto na akwụkwọ ebe a; dee ihe ịchọrọ enyemaka.",
         "stopped": "Ị kwụsịla nnata nzaghachi onye enyemaka. Gardenia agaghị aza ọzọ ruo mgbe izipụrụ START.",
     },
     "fr": {
@@ -122,19 +124,40 @@ TEXT: dict[str, dict[str, str]] = {
         "postharvest": "Après-récolte : indiquez la culture, la date de récolte, les symptômes ou problèmes et le stockage. Je peux proposer des contrôles généraux, pas diagnostiquer l'altération ni certifier la sécurité alimentaire. Suivez les conseils agricoles locaux.",
         "finance": "Finances agricoles : indiquez la trésorerie disponible, les ventes prévues, les coûts d'exploitation et le besoin pour le prochain cycle (devise et échéance). Je peux faire des calculs simples, pas décider d'un crédit ou d'un prêt.",
         "fallback": "Je n'ai pas compris. Répondez HELP pour le menu, BUYER ou FARMER pour choisir un profil, ou envoyez LANGUAGE English/Hausa/Yoruba/Igbo pour changer de langue.",
-        "text_only": "Veuillez envoyer un message texte. Pour une photo ou un document, décrivez la culture et ce que vous souhaitez vérifier. L'assistant ne peut pas encore analyser les images.",
+        "text_only": "Veuillez envoyer un message texte. Les notes vocales ne sont pas transcrites ici et les photos ou documents ne peuvent pas être analysés ; décrivez votre besoin par écrit.",
         "stopped": "Vous êtes désabonné. Gardenia ne répondra plus jusqu'à ce que vous envoyiez START.",
     },
+}
+TEXT["pcm"] = {
+    "welcome": "Welcome to Gardenia. Reply BUYER or FARMER to choose your assistant, or HELP for options. Languages: English, Pidgin, Hausa, Yoruba, Igbo, French.",
+    "help": "Buyer: SOURCE, REORDER, DEMAND, or QUALITY. Farmer: LISTING, PLANNER, PRICING, POST-HARVEST, or FINANCE. Reply BUYER or FARMER to switch.",
+    "language": "Language don set to {language}. Send LANGUAGE plus the language name to change am.",
+    "buyer": "Buyer assistant don set. Send SOURCE, REORDER, DEMAND, or QUALITY.",
+    "farmer": "Farmer assistant don set. Send LISTING, PLANNER, PRICING, POST-HARVEST, or FINANCE.",
+    "source": "Send the produce, quantity for kg, delivery area, date, and whether na one-time or regular supply. Live Gardenia search no connect yet.",
+    "reorder": "Smart reorder: send the produce, last order date and quantity, current stock, and when you need more. Gardenia order history no connect yet.",
+    "demand": "Demand planning: send produce, recent weekly sales or usage, and the planning period. Gardenia sales data no connect for real forecast.",
+    "quality": "Quality and freshness: send produce, harvest or packing date, lot, storage and transport details. I fit share checks, but I no fit verify quality.",
+    "listing": "Listing copilot: send produce, quantity/unit, quality facts, collection place, and asking price. I fit draft the listing for your review, but I no go publish am.",
+    "planner": "Harvest planner: send crop, variety, farm place, planting date, and expected days to harvest. Local weather and farm extension data no connect.",
+    "pricing": "Pricing advisor: send produce, grade, unit, area, your target price, and a recent comparable price. I no get live market prices.",
+    "postharvest": "Post-harvest assistant: send crop, harvest date, issue, and storage. I fit suggest general checks, but I no fit diagnose spoilage or confirm food safety.",
+    "finance": "Farm finance: send available cash, expected sales, costs, and next-cycle funds needed. I fit do basic maths, not credit decisions.",
+    "fallback": "I no too understand. Reply HELP for options, BUYER or FARMER for your role, or LANGUAGE plus the language name.",
+    "text_only": "Abeg send text. Voice notes no dey transcribe here, and we no fit check photos or documents yet; write wetin you need help with.",
+    "stopped": "You don opt out. Gardenia no go reply again until you send START.",
 }
 
 LANGUAGE_TERMS = {
     "en": ("english", "anglais", "turanci"),
+    "pcm": ("pidgin", "nigerian pidgin"),
     "ha": ("hausa", "hausaa"),
     "yo": ("yoruba", "yorùbá", "yarbanci"),
     "ig": ("igbo", "ibo"),
     "fr": ("french", "français", "francais", "faransanci"),
 }
 LANGUAGE_HINTS = {
+    "pcm": ("abeg", "wetin", "dey", "fit help", "make we", "no wahala", "i wan"),
     "ha": ("sannu", "ina so", "manomi", "manoma", "noma", "farashi"),
     "yo": ("ẹ káàárọ̀", "e kaaro", "mo fẹ", "mo fe", "àgbẹ̀", "agbe", "irugbin", "owó"),
     "ig": ("ndewo", "achọrọ", "acho", "ọrụ ugbo", "ugbo", "ego", "onye ọrụ ugbo"),
@@ -170,7 +193,9 @@ class LanguageStore:
                     language TEXT NOT NULL,
                     role TEXT NOT NULL,
                     updated_at TEXT NOT NULL,
-                    opted_out INTEGER NOT NULL DEFAULT 0
+                    opted_out INTEGER NOT NULL DEFAULT 0,
+                    conversation_json TEXT,
+                    conversation_expires_at TEXT
                 )"""
             )
             columns = {row[1] for row in connection.execute("PRAGMA table_info(user_preferences)")}
@@ -178,6 +203,10 @@ class LanguageStore:
                 connection.execute(
                     "ALTER TABLE user_preferences ADD COLUMN opted_out INTEGER NOT NULL DEFAULT 0"
                 )
+            if "conversation_json" not in columns:
+                connection.execute("ALTER TABLE user_preferences ADD COLUMN conversation_json TEXT")
+            if "conversation_expires_at" not in columns:
+                connection.execute("ALTER TABLE user_preferences ADD COLUMN conversation_expires_at TEXT")
             connection.commit()
 
     def _connect(self) -> sqlite3.Connection:
@@ -210,6 +239,70 @@ class LanguageStore:
                     role if role is not None else old_role,
                     datetime.now(timezone.utc).isoformat(),
                 ),
+            )
+            connection.commit()
+
+    def get_conversation(self, user_id: str) -> dict[str, Any]:
+        with closing(self._connect()) as connection:
+            now = datetime.now(timezone.utc).isoformat()
+            connection.execute(
+                """UPDATE user_preferences
+                   SET conversation_json = NULL, conversation_expires_at = NULL
+                   WHERE conversation_expires_at IS NOT NULL AND conversation_expires_at <= ?""",
+                (now,),
+            )
+            connection.commit()
+            row = connection.execute(
+                "SELECT conversation_json FROM user_preferences WHERE user_key = ?",
+                (self._key(user_id),),
+            ).fetchone()
+        if not row or not row[0]:
+            return {}
+        try:
+            state = json.loads(row[0])
+            created = datetime.fromisoformat(state["created_at"])
+        except (ValueError, KeyError, TypeError, json.JSONDecodeError):
+            self.clear_conversation(user_id)
+            return {}
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+        if datetime.now(timezone.utc) - created > timedelta(hours=24):
+            self.clear_conversation(user_id)
+            return {}
+        return state if isinstance(state, dict) else {}
+
+    def set_conversation(self, user_id: str, state: dict[str, Any]) -> None:
+        language, role = self.get(user_id)
+        created = datetime.fromisoformat(state["created_at"])
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+        expires_at = (created + timedelta(hours=24)).isoformat()
+        with closing(self._connect()) as connection:
+            connection.execute(
+                """INSERT INTO user_preferences
+                   (user_key, language, role, updated_at, conversation_json, conversation_expires_at)
+                   VALUES (?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(user_key) DO UPDATE SET
+                     conversation_json = excluded.conversation_json,
+                     conversation_expires_at = excluded.conversation_expires_at,
+                     updated_at = excluded.updated_at""",
+                (
+                    self._key(user_id),
+                    language,
+                    role,
+                    datetime.now(timezone.utc).isoformat(),
+                    json.dumps(state, ensure_ascii=False),
+                    expires_at,
+                ),
+            )
+            connection.commit()
+
+    def clear_conversation(self, user_id: str) -> None:
+        with closing(self._connect()) as connection:
+            connection.execute(
+                """UPDATE user_preferences SET conversation_json = NULL,
+                   conversation_expires_at = NULL, updated_at = ? WHERE user_key = ?""",
+                (datetime.now(timezone.utc).isoformat(), self._key(user_id)),
             )
             connection.commit()
 
@@ -247,7 +340,7 @@ def normalize(text: str) -> str:
 
 def detect_language(text: str) -> str | None:
     normalized = normalize(text)
-    for language in ("fr", "ha", "yo", "ig"):
+    for language in ("pcm", "fr", "ha", "yo", "ig"):
         if any(term in normalized for term in LANGUAGE_HINTS[language]):
             return language
     return None
@@ -303,6 +396,10 @@ def build_reply(text: str, language: str, role: str) -> tuple[str, str | None, s
 
 
 def message_text(message: dict[str, Any]) -> str | None:
+    if message.get("input_type") == "voice":
+        transcription = message.get("transcription")
+        if isinstance(transcription, str):
+            return transcription
     if message.get("type") == "text":
         body = message.get("text", {}).get("body")
         return body if isinstance(body, str) else None
@@ -353,7 +450,8 @@ def send_whatsapp_text(
         raise RuntimeError("WhatsApp API network request failed") from error
 
 
-def create_handler(config: dict[str, str], store: LanguageStore, sender=send_whatsapp_text):
+def create_handler(config: dict[str, str], store: LanguageStore, sender=send_whatsapp_text, sourcing_agent=None):
+    agent = sourcing_agent or BuyerSourcingAgent(store)
     class WebhookHandler(BaseHTTPRequestHandler):
         server_version = "GardeniaWhatsApp/1.0"
 
@@ -435,6 +533,7 @@ def create_handler(config: dict[str, str], store: LanguageStore, sender=send_wha
                         normalized = normalize(text or "")
                         if normalized in ("stop", "unsubscribe"):
                             store.set_opted_out(recipient, True)
+                            store.clear_conversation(recipient)
                             reply = TEXT[language]["stopped"]
                         elif store.is_opted_out(recipient):
                             if normalized != "start":
@@ -446,9 +545,21 @@ def create_handler(config: dict[str, str], store: LanguageStore, sender=send_wha
                         elif text is None:
                             reply = TEXT[language]["text_only"]
                         else:
-                            reply, updated_language, updated_role = build_reply(text, language, role)
-                            if updated_language or updated_role is not None:
-                                store.set(recipient, updated_language, updated_role)
+                            detected_language = detect_language(text)
+                            if detected_language:
+                                language = detected_language
+                                store.set(recipient, language, role)
+                            reply = agent.handle(
+                                recipient,
+                                text,
+                                language,
+                                input_type="voice" if message.get("input_type") == "voice" else "text",
+                                confidence=message.get("transcription_confidence"),
+                            )
+                            if reply is None:
+                                reply, updated_language, updated_role = build_reply(text, language, role)
+                                if updated_language or updated_role is not None:
+                                    store.set(recipient, updated_language, updated_role)
                         try:
                             sender(
                                 recipient,

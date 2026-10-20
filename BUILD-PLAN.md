@@ -14,7 +14,7 @@ Open `index.html` in a modern browser. No build step or external dependency is r
 - Add offers to a sourcing list at the listed illustrative minimum quantity; adjust in MOQ-sized increments.
 - Review combined sample quantity, supplier count, and indicative subtotal.
 - Draft (but do not send) a multi-supplier RFQ summary.
-- Use the assistant panel to filter offers and get guidance about quantity, destination, and aggregation.
+- Use the assistant panel to build a sourcing brief one question at a time; it does not use the sample cards as live recommendations.
 - Persist the demo sourcing list in local browser storage.
 - Switch between buyer and farmer workspaces using the demo role selector.
 - **Buyer tools:** similar-interest sourcing suggestions, sample smart-reorder reminders, a user-input demand scenario, and a quality/freshness due-diligence checklist.
@@ -25,9 +25,9 @@ All new assistant tools run locally in the browser. Buyer interest and reorder h
 
 ## WhatsApp assistant implementation
 
-`whatsapp_assistant.py` is a standard-library Python webhook for Meta's WhatsApp Business Cloud API. It verifies webhook setup, checks each POST against Meta's `X-Hub-Signature-256`, handles text and interactive replies, and sends user-initiated replies through the configured Graph API endpoint. The phrase-based localization supports English, Hausa, Yoruba, Igbo, and French. The current menu guides buyer and farmer requests but has no live Gardenia catalog, sales-history, price, image, or farm-data integration.
+`whatsapp_assistant.py` is a standard-library Python webhook for Meta's WhatsApp Business Cloud API. It verifies webhook setup, checks each POST against Meta's `X-Hub-Signature-256`, handles text and interactive replies, and sends user-initiated replies through the configured Graph API endpoint. The phrase-based localization supports English, Nigerian Pidgin, Hausa, Yoruba, Igbo, and French. `sourcing_agent.py` captures a buyer brief and enforces verified-offer checks and an explicit order confirmation gate when tools are provided, but this project has no live Gardenia adapter. It must not present a live shortlist, order, quote, or human handoff without successful tool results.
 
-The service stores a keyed HMAC of the WhatsApp ID plus language, role, and opt-out status in SQLite; it does not store raw IDs or message text. `STOP`/`UNSUBSCRIBE` pauses replies, `START` resumes them, and `PREFERENCE_HASH_KEY` should be stable for persistent preferences. Meta tokens and signing secrets are environment-only. See `WHATSAPP-SETUP.md`.
+The service stores a keyed HMAC of the WhatsApp ID plus language, role, opt-out status, and temporary parsed conversation state in SQLite. The state can include a delivery address and expires after 24 hours; raw IDs and full message text are not stored. WhatsApp audio is not transcribed. `STOP`/`UNSUBSCRIBE` pauses replies, `START` resumes them, and `PREFERENCE_HASH_KEY` should be stable for persistent preferences. Meta tokens and signing secrets are environment-only. See `WHATSAPP-SETUP.md`.
 
 ## MVP buyer journey
 
